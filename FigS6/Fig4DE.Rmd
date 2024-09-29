@@ -1,0 +1,87 @@
+---
+title: "FigS6 BLI"
+author: "HaoranXu"
+date: "2024/09/14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Clean workspace
+rm(list=ls()) 
+# Load setting and functions
+library(ggplot2)
+library(stringr)
+library(tidyr)
+
+```
+
+## Fig S6A BLI D14 with rac-GR24
+
+```{r}
+#read input files
+RawData = read.table("dataForFigS6A.csv", header=T, sep=",")
+colnames(RawData)[2:6] = c(100,50,25,12.5,6.25)
+df_long = pivot_longer(RawData, cols = -TimePoint, names_to = "Compound", values_to = "BLISignal")
+df_long$Compound = factor(df_long$Compound, levels =  c(100,50,25,12.5,6.25))
+p = ggplot(df_long, aes(x = TimePoint, y = BLISignal, colour = Compound, shape = Compound)) +
+#geom_point(shape=16, size=0.5) +
+geom_line(size=0.3) +
+labs(x=paste("Time(s)"), y="BLI signal (nm)") +
+expand_limits(x=25,y = 0)+
+labs(title = "D14 rac-GR24", color = "black", size = 8) +
+scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+theme(
+  plot.background = element_rect(fill = "#FFFFFF"), 
+  panel.background = element_blank(), 
+  panel.grid.major.x = element_blank(),
+  panel.grid.major.y = element_blank(), 
+  panel.grid.minor.x = element_blank(), 
+  panel.grid.minor.y = element_blank(),
+  panel.border = element_blank(), 
+  axis.title = element_text(size = 8),  
+  axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+  axis.line = element_line(colour = "#000000"),
+  legend.title = element_blank(),
+  legend.key = element_rect(fill = "#FFFFFF"),
+  legend.position = "none"
+  ) +
+  scale_color_manual(values = c("#f47a75","#fdd845","#22ed7c","#09b0d3","#1d27c9","#765005"))
+#ggsave(p, filename = "FigS6A.png", width = 3, height = 2)
+ggsave(p, filename = "FigS6A.pdf", width = 3, height = 2)
+```
+
+## Fig S6B BLI D14 with cyclo(Leu-Pro)
+
+```{r}
+RawData = read.table("dataForFigS6B.csv", header=T, sep=",")
+colnames(RawData)[2:7] = c(100,50,25,12.5,6.25,3.125)
+df_long = pivot_longer(RawData, cols = -TimePoint, names_to = "Compound", values_to = "BLISignal")
+df_long$Compound = factor(df_long$Compound, levels =  c(100,50,25,12.5,6.25,3.125))
+p = ggplot(df_long, aes(x = TimePoint, y = BLISignal, colour = Compound, shape = Compound)) +
+#geom_point(shape=16, size=0.5) +
+geom_line(size=0.3) +
+labs(x=paste("Time(s)"), y="BLI signal (nm)") +
+expand_limits(x=25,y = 0)+
+labs(title = "D14 Cyclo(Leu-Pro)", color = "black", size = 8) +
+scale_y_continuous(limits = c(0, 1.2), breaks = seq(0, 1.2, 0.2)) +
+theme(
+  plot.background=element_rect(fill="#FFFFFF"), 
+  panel.background = element_blank(), 
+  panel.grid.major.x = element_blank(),
+  panel.grid.major.y = element_blank(), 
+  panel.grid.minor.x = element_blank(), 
+  panel.grid.minor.y = element_blank(),
+  panel.border = element_blank(), 
+  axis.title = element_text(size=8),  
+  axis.text.x = element_text(size=8,angle=45,vjust=1,hjust=1), 
+  axis.line = element_line(colour="black"),
+  legend.title = element_blank(),
+  legend.key = element_rect(fill="#FFFFFF"),
+  legend.position = "right"
+) +
+scale_color_manual(values = c("#f47a75","#fdd845","#22ed7c","#09b0d3","#1d27c9","#765005"))
+#ggsave(p, filename = "FigS6B.png", width = 3, height = 2)
+ggsave(p, filename = "FigS6B.pdf", width = 3, height = 2)
+
+```

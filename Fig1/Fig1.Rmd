@@ -1,0 +1,230 @@
+---
+title: "Fig2: Root microbiota correlates with tiller number variation in a field-grown rice population"
+author: "Ray Dai"
+date: "2024/09/12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Clean workspace
+rm(list=ls()) 
+# Load setting and functions
+library(tidyverse)
+library(vegan)
+library(reshape2)
+library(VennDiagram)
+library(RColorBrewer)
+library(patchwork)
+library(psych)
+library(ggpubr)
+library(pheatmap)
+library(ape)
+```
+
+## Fig1B/S1D The root microbiota and its interaction with plant genotype significantly contribute to the variation observed in rice tiller number in Field I. 
+
+```{r}
+venn_data<-read.csv("dataForFig1BS1D.tsv",sep="\t")
+
+venn_data_I<-venn_data%>%filter(Description=="Field I")
+venn_data_II<-venn_data%>%filter(Description=="Field II")
+
+m = (venn_data_I[venn_data_I$Variance=="Root microbiota",]$Percentage+venn_data_I[venn_data_I$Variance=="Intersection",]$Percentage)*10000
+g = (venn_data_I[venn_data_I$Variance=="Rice genotype",]$Percentage+venn_data_I[venn_data_I$Variance=="Intersection",]$Percentage)*10000
+a = sum(venn_data_I$Percentage)*10000
+
+p <- venn.diagram(
+  x = list(microbiota = 1:m, genotype = (m - a + 1):(m + g - a)),
+  scaled = T, sub = paste("microbiota = ", m/10000, "; genotype = ", g/10000, "; All = ", a/10000, sep = ""), cex = 0,
+  filename = NULL, fill = c("#7cd6cf", "#f8cd7f"), alpha = 0.70, main = "Field I")
+
+ggsave("Fig1B.pdf",p, width = 3, height = 3)
+#ggsave("Fig1B.png",p, width = 3, height = 3)
+
+m = (venn_data_II[venn_data_II$Variance=="Root microbiota",]$Percentage+venn_data_II[venn_data_II$Variance=="Intersection",]$Percentage)*10000
+g = (venn_data_II[venn_data_II$Variance=="Rice genotype",]$Percentage+venn_data_II[venn_data_II$Variance=="Intersection",]$Percentage)*10000
+a = sum(venn_data_II$Percentage)*10000
+
+p <- venn.diagram(
+  x = list(microbiota = 1:m, genotype = (m - a + 1):(m + g - a)),
+  scaled = T, sub = paste("microbiota = ", m/10000, "; genotype = ", g/10000, "; All = ", a/10000, sep = ""), cex = 0,
+  filename = NULL, fill = c("#7cd6cf", "#f8cd7f"), alpha = 0.70, main = "Field II")
+
+ggsave("FigS1D.pdf",p, width = 3, height = 3)
+#ggsave("FigS1D.png",p, width = 3, height = 3)
+```
+
+## Fig1C-D/FigS2A-B
+
+```{r}
+Tiller_cor<-read.csv("dataForFig1CDS2AB.tsv",sep="\t",check.names = F)
+
+cor_FieldI_shannon_e<-cor.test(Tiller_cor$`Field I shannon_e`,Tiller_cor$`Field I Tiller`,method="spearman")
+
+p1<-ggplot(Tiller_cor,aes(`Field I shannon_e`,`Field I Tiller`))+
+  geom_point(alpha=0.8)+geom_smooth(method="lm")+
+  labs(title = paste("Rho = " , round(cor_FieldI_shannon_e$estimate, digits = 2),
+                     ", P = " , signif(cor_FieldI_shannon_e$p.value, digits = 2) , sep = ""))+
+  theme_bw()
+
+p1
+
+cor_FieldI_PCo1<-cor.test(Tiller_cor$`Field I PCo1`,Tiller_cor$`Field I Tiller`,method="spearman")
+
+p2<-ggplot(Tiller_cor,aes(`Field I PCo1`,`Field I Tiller`))+
+  geom_point(alpha=0.8)+geom_smooth(method="lm")+
+  labs(title = paste("Rho = " , round(cor_FieldI_PCo1$estimate, digits = 2),
+                     ", P = " , signif(cor_FieldI_PCo1$p.value, digits = 2) , sep = ""))+
+  theme_bw()
+
+p2
+
+p<-p1+p2
+
+ggsave("Fig1C_D.pdf",p,width=8,height = 3)
+#ggsave("Fig1C_D.pdf",p,width=8,height = 3)
+
+
+cor_FieldII_shannon_e<-cor.test(Tiller_cor$`Field II shannon_e`,Tiller_cor$`Field II Tiller`,method="spearman")
+
+p1<-ggplot(Tiller_cor,aes(`Field II shannon_e`,`Field II Tiller`))+
+  geom_point(alpha=0.8)+geom_smooth(method="lm")+
+  labs(title = paste("Rho = " , round(cor_FieldII_shannon_e$estimate, digits = 2),
+                     ", P = " , signif(cor_FieldII_shannon_e$p.value, digits = 2) , sep = ""))+
+  theme_bw()
+
+p1
+
+cor_FieldII_PCo1<-cor.test(Tiller_cor$`Field II PCo1`,Tiller_cor$`Field II Tiller`,method="spearman")
+
+p2<-ggplot(Tiller_cor,aes(`Field II PCo1`,`Field II Tiller`))+
+  geom_point(alpha=0.8)+geom_smooth(method="lm")+
+  labs(title = paste("Rho = " , round(cor_FieldII_PCo1$estimate, digits = 2),
+                     ", P = " , signif(cor_FieldII_PCo1$p.value, digits = 2) , sep = ""))+
+  theme_bw()
+
+p2
+
+p<-p1+p2
+
+ggsave("FigS2A_B.pdf",p,width=8,height = 3)
+#ggsave("FigS2A_B.png",p,width=8,height = 3)
+```
+
+## Fig1EF Overlap of bacterial genera positively (E) or negatively (F) correlated with tiller number of rice varieties grown in the two test fields.
+
+```{r}
+Cor_genus_info<-read.csv("dataForFig1EF.tsv",sep="\t",check.names = F)
+
+# 可视化统计结果，并关注以前的菌的变化：
+# Positive:
+positive_genus_I<-Cor_genus_info%>%filter(`Field I Level`=="Positive")
+positive_genus_II<-Cor_genus_info%>%filter(`Field II Level`=="Positive")
+
+positive_genus<-list(FieldI_P=positive_genus_I$Genus,
+                     FieldII_P=positive_genus_II$Genus)
+
+p1 <- ggvenn::ggvenn(positive_genus,set_name_size = 0,auto_scale = T)+
+  labs(title="Tiller (+)")+
+  scale_fill_manual(values=c("#9E86E3", "#1496D4"))+
+  theme(plot.title = element_text(hjust = 0.5))
+
+# negative:
+negative_genus_I<-Cor_genus_info%>%filter(`Field I Level`=="Negative")
+negative_genus_II<-Cor_genus_info%>%filter(`Field II Level`=="Negative")
+
+negative_genus<-list(FieldI_N=negative_genus_I$Genus,
+                     FieldII_N=negative_genus_II$Genus)
+
+p2 <- ggvenn::ggvenn(negative_genus,set_name_size = 0,auto_scale = T)+
+  labs(title="Tiller (-)")+
+  scale_fill_manual(values=c("#9E86E3", "#1496D4"))+
+  theme(plot.title = element_text(hjust = 0.5))
+
+p<-p1 / p2
+p
+#ggsave("Fig1EF.png",p,width=4,height = 6)
+ggsave("Fig1EF.pdf",p,width=4,height = 6)
+
+```
+
+## Fig1G/S2C The heatmap showing the relative abundances of bacterial genera that consistently correlate positively or negatively with rice tiller numbers across two tested fields within rice tiller number ranges.
+
+```{r}
+genus_heatmap_FieldI<-read.csv("dataForFig1G.tsv",sep="\t",check.names = F)
+
+pheatmap::pheatmap(genus_heatmap_FieldI,cluster_rows = T,cluster_cols = F,
+                   #color = colorRampPalette((brewer.pal(8,"YlGnBu")))(100),
+                   cutree_rows =  2 ,
+                   filename = "Fig1G.pdf",
+                   width=5,height = 4,
+                   scale = "row")
+
+#pheatmap::pheatmap(genus_heatmap_FieldI,cluster_rows = T,cluster_cols = F,
+#                   #color = colorRampPalette((brewer.pal(8,"YlGnBu")))(100),
+#                   cutree_rows =  2 ,
+#                   filename = "Fig1G.png",
+#                   width=5,height = 4,
+#                   scale = "row")
+
+
+genus_heatmap_FieldII<-read.csv("dataForFigS2C.tsv",sep="\t",check.names = F)
+
+pheatmap::pheatmap(genus_heatmap_FieldII,cluster_rows = T,cluster_cols = F,
+                   #color = colorRampPalette((brewer.pal(8,"YlGnBu")))(100),
+                   cutree_rows =  2 ,
+                   filename = "FigS2C.pdf",
+                   width=5,height = 4,
+                   scale = "row")
+
+#pheatmap::pheatmap(genus_heatmap_FieldII,cluster_rows = T,cluster_cols = F,
+#                   #color = colorRampPalette((brewer.pal(8,"YlGnBu")))(100),
+#                   cutree_rows =  2 ,
+#                   filename = "FigS2C.png",
+#                   width=5,height = 4,
+#                   scale = "row")
+```
+
+## FigS1ABC
+
+```{r}
+PCA_explain<-read.csv("dataForFigS1ABC.tsv",sep="\t",check.names = F)
+
+eig=head(PCA_explain,n=30)
+
+# Plotting barplot + line plot
+p1 = ggplot(eig, aes(Dimensions, Genotype)) + 
+  geom_bar(stat="identity", fill="#89CAE9") +
+  geom_line(colour = 'black') + 
+  geom_point(shape=21, color="black", fill="black", size=2) +
+  geom_text(data=round(head(eig,n=10),digits=1), aes(Dimensions, Genotype, label=Genotype),hjust = 0, nudge_x = 0.05, vjust = 0, nudge_y = 0.2) + 
+  labs(y="Explained variance (%)",title="PCA of rice genotype")+
+  theme_classic()+theme(plot.background = element_blank())
+p1
+
+p2 = ggplot(eig, aes(Dimensions, `Microbiota in field I`)) + 
+  geom_bar(stat="identity", fill="#CEC2F1") +
+  geom_line(colour = 'black') + 
+  geom_point(shape=21, color="black", fill="black", size=2) +
+  geom_text(data=round(head(eig,n=10),digits=1), aes(Dimensions, `Microbiota in field I`, label=`Microbiota in field I`),hjust = 0, nudge_x = 0.05, vjust = 0, nudge_y = 0.2) + 
+  labs(y="Explained variance (%)",title="PCoA of root microbiota in field I")+
+  theme_classic()+theme(plot.background = element_blank())
+p2
+
+p3 = ggplot(eig, aes(Dimensions, `Microbiota in field II`)) + 
+  geom_bar(stat="identity", fill="#CEC2F1") +
+  geom_line(colour = 'black') + 
+  geom_point(shape=21, color="black", fill="black", size=2) +
+  geom_text(data=round(head(eig,n=10),digits=1), aes(Dimensions, `Microbiota in field II`, label=`Microbiota in field II`),hjust = 0, nudge_x = 0.05, vjust = 0, nudge_y = 0.2) + 
+  labs(y="Explained variance (%)",title="PCoA of root microbiota in field II")+
+  theme_classic()+theme(plot.background = element_blank())
+p3
+
+p<-p1/p2/p3
+p
+
+ggsave("FigS1ABC.pdf",p,height = 10,width = 5)
+#ggsave("FigS1ABC.png",p,height = 10,width = 5)
+
+```

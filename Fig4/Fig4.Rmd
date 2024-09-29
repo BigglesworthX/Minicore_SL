@@ -1,0 +1,438 @@
+---
+title: "Fig4: Exiguobacterium R2567-derived cyclo (Leu-Pro) actives rice SL signaling pathway"
+author: "HaoranXu"
+date: "2024/09/11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Clean workspace
+rm(list=ls()) 
+# Load setting and functions
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(Rmisc)
+library(reshape2)
+```
+
+## Fig4C The D53 protein levels after the treatment of SL analog rac-GR24 and cyclo (Lue-Pro). 
+
+```{r}
+#read input files
+RawData = read.table("dataForFig4C.csv", header=T, sep=",")
+#calculate plot data
+phenotype = "RelativeD53Level"
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Nip_Mock", "Nip_gr24", "Nip_S6"))
+#statistics
+ForSig = RawData
+ForSig = ForSig[, c("GroupID", phenotype)]
+colnames(ForSig)[2] = "y"
+TtestResult = compare_means(y ~ GroupID, data = ForSig, method = "t.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+TtestResult = as.data.frame(TtestResult)
+TtestResult = TtestResult[TtestResult$group1 == "Nip_Mock",] 
+TtestResult$padjFDR = p.adjust(TtestResult$p, method = "fdr", n = length(TtestResult$p))
+TtestResult = TtestResult[, c("group2", "method", "p", "padjFDR")]
+SigTableFinal = TtestResult
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+SigTableFinal = merge(ForPlot[,c("GroupID","N", phenotype)], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig4C.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+#prepare data for plot
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = .data[[phenotype]], fill = GroupID)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#666666", "#765005", "#ffc076")) +
+  xlab("") +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+ggsave(p, filename = "Fig4C.pdf", width = 2, height = 2.5)
+#ggsave(p, filename = "Fig4C.png", width = 2, height = 2.5)
+```
+
+## Fig4E  Inoculation of cyclo (Leu-Pro) significantly inhibit the tiller numbers of wild-type rice in a time-series manner.
+
+```{r}
+#read input files
+# 读取实验设计文件赋给因子排序----
+RawData = read.table("dataForFig4E.csv", header=T, sep=",")
+index = RawData
+#calculate plot data
+colnames(index)[2:11] <- c(4, 8, 12, 16, 20, 25, 29, 33, 37, 41)
+index = melt(index, id.vars = c("GroupID"), variable.name = "GrowthTime", value.name = "TillerNumber")
+index$GroupID = factor(index$GroupID, levels = c("Np_Mock", "Np_Gr24", "Np_S6"))
+ForPlot = summarySE(index, measurevar = "TillerNumber", groupvars=c("GroupID", "GrowthTime"))
+ForPlot$GrowthTime=as.numeric(as.character(ForPlot$GrowthTime))
+#statistics
+SigTableFinal = t(as.data.frame(c("Days", "group2", "method", "p", "padjFDR"))) 
+colnames(SigTableFinal) = c("Days", "group2", "method", "p", "padjFDR")
+SigTableFinal = SigTableFinal[-1,]
+Days = c("TillerNumber4D", "TillerNumber8D", "TillerNumber12D", "TillerNumber16D", "TillerNumber20D", "TillerNumber25D", "TillerNumber29D", "TillerNumber33D", "TillerNumber37D", "TillerNumber41D")
+for (daynumber in Days){
+  ForSig = RawData
+  ForSig$GroupID = factor(ForSig$GroupID, levels = c("Np_Mock", "Np_Gr24", "Np_S6"))
+  ForSig = ForSig[, c("GroupID", daynumber)]
+  colnames(ForSig)[2] = "TillerNumber"
+  WilcoxtestResult = compare_means(TillerNumber ~ GroupID, data = ForSig, method = "wilcox.test", paired = F)
+  colnames(ForSig)[2] = daynumber
+  WilcoxtestResult$.y. = daynumber
+  WilcoxtestResult = as.data.frame(WilcoxtestResult)
+  WilcoxtestResult = WilcoxtestResult[WilcoxtestResult$group1 == "Np_Mock",]
+  WilcoxtestResult$padjFDR = p.adjust(WilcoxtestResult$p, method = "fdr", n = length(WilcoxtestResult$p))
+  colnames(WilcoxtestResult)[1] = "Days"
+  WilcoxtestResult = WilcoxtestResult[, c("Days", "group2", "method", "p", "padjFDR")]
+  SigTableFinal = merge(SigTableFinal, WilcoxtestResult, all =T) 
+}
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$GroupID = SigTableFinal$group2
+SigTableFinal$Days = str_replace(SigTableFinal$Days, "TillerNumber", "")
+SigTableFinal$Days = str_replace(SigTableFinal$Days, "D", "")
+SigTableFinal$GrowthTime = SigTableFinal$Days
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+SigTableFinal = merge(ForPlot[,c("GroupID", "GrowthTime", "N", "TillerNumber")], SigTableFinal[,c("GroupID", "GrowthTime", "method", "p", "padjFDR","pAsterisk", "padjFDRAsterisk")], by = c("GroupID", "GrowthTime"), all = T)
+#write.table(SigTableFinal, file="StatisticsResult.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+SigTableFinal = SigTableFinal[,c("GroupID", "GrowthTime", "padjFDRAsterisk")]
+ForPlot = merge(ForPlot, SigTableFinal, all = T)
+#save plot
+p = ggplot(ForPlot, aes(x = GrowthTime, y = TillerNumber, colour = GroupID, shape = GroupID)) +
+  geom_point(shape=16, size=1) +
+  geom_line(size=0.5) +
+  labs(x=paste("GrowthTime(Days)"), y="TillerNumber") +
+  geom_errorbar(aes(ymin = TillerNumber, ymax = TillerNumber+se), width = 0.5) +
+  geom_text(data=ForPlot, aes(x=GrowthTime, y= TillerNumber+0.1, label= padjFDRAsterisk),show.legend = FALSE, color="black") +
+  xlab("Days after compound inoculation") +
+  scale_y_continuous(limits = c(1, 3.2)) +
+  scale_color_manual(values = c("#666666", "#765005", "#ffc076")) +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    ) 
+ggsave(p, filename = "Fig4E.pdf", width = 5, height = 3)
+#ggsave(p, filename = "Fig4E.png", width = 5, height = 3)
+```
+
+## Fig4F  Inoculation of cyclo (Leu-Pro) significantly inhibit the tiller numbers of wild-type rice Nipponbare in field condition.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig4F.csv", header=T, sep=",")
+
+#calculate plot data
+phenotype = "TillerNumber"
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="Treatment")
+ForPlot$Treatment = factor(ForPlot$Treatment, levels = c("Mock", "Gr24", "S6"))
+
+ForSig = RawData
+ForSig = ForSig[, c("Treatment", phenotype)]
+colnames(ForSig)[2] = "y"
+WilcoxonResult = compare_means(y ~ Treatment, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+WilcoxonResult = as.data.frame(WilcoxonResult)
+WilcoxonResult = WilcoxonResult[WilcoxonResult$group1 == "Mock",]
+WilcoxonResult$padjFDR = p.adjust(WilcoxonResult$p, method = "fdr", n = length(WilcoxonResult$p))
+WilcoxonResult = WilcoxonResult[, c("group2", "method", "p", "padjFDR")]
+SigTableFinal = WilcoxonResult
+  for (padjmethod in c("p", "padjFDR")){
+    asterisk = paste(padjmethod, "Asterisk", sep = "")
+    for (m in 1:length(SigTableFinal[,1])){
+      ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+              SigTableFinal[[asterisk]][m] <- "***",
+              ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                      SigTableFinal[[asterisk]][m] <- "**",
+                      ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                              SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+    }
+  }
+SigTableFinal = merge(ForPlot[,c("Treatment","N", phenotype)], SigTableFinal, by.x = "Treatment", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig5B.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+ForPlot = merge(ForPlot, SigTableFinal[,c("Treatment", "padjFDRAsterisk")], all = T)
+ForPlot$padjmethod = padjmethod
+#prepare data for plot
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = Treatment, y = .data[[phenotype]], fill = Treatment)) +
+    geom_bar(stat = "identity", width = 0.8) +
+    geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+    geom_text(aes(x = Treatment, y = max, label = padjFDRAsterisk)) +
+    ggtitle("Nipponbare") +
+    scale_fill_manual(values = c("#888888", "#10885A", "#A3A010")) +
+     xlab("") +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+)
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+ggsave(p, filename = "Fig4F.pdf", width = 2, height = 2.5)
+
+```
+
+
+## Fig4G  Inoculation of cyclo (Leu-Pro) significantly inhibit the tiller numbers of wild-type rice 9311 in field condition.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig4G.csv", header=T, sep=",")
+
+#calculate plot data
+phenotype = "TillerNumber"
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="Treatment")
+ForPlot$Treatment = factor(ForPlot$Treatment, levels = c("Mock", "Gr24", "S6"))
+
+ForSig = RawData
+ForSig = ForSig[, c("Treatment", phenotype)]
+colnames(ForSig)[2] = "y"
+WilcoxonResult = compare_means(y ~ Treatment, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+WilcoxonResult = as.data.frame(WilcoxonResult)
+WilcoxonResult = WilcoxonResult[WilcoxonResult$group1 == "Mock",]
+WilcoxonResult$padjFDR = p.adjust(WilcoxonResult$p, method = "fdr", n = length(WilcoxonResult$p))
+WilcoxonResult = WilcoxonResult[, c("group2", "method", "p", "padjFDR")]
+SigTableFinal = WilcoxonResult
+  for (padjmethod in c("p", "padjFDR")){
+    asterisk = paste(padjmethod, "Asterisk", sep = "")
+    for (m in 1:length(SigTableFinal[,1])){
+      ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+              SigTableFinal[[asterisk]][m] <- "***",
+              ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                      SigTableFinal[[asterisk]][m] <- "**",
+                      ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                              SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+    }
+  }
+SigTableFinal = merge(ForPlot[,c("Treatment","N", phenotype)], SigTableFinal, by.x = "Treatment", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig5B.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+ForPlot = merge(ForPlot, SigTableFinal[,c("Treatment", "padjFDRAsterisk")], all = T)
+ForPlot$padjmethod = padjmethod
+#prepare data for plot
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = Treatment, y = .data[[phenotype]], fill = Treatment)) +
+    geom_bar(stat = "identity", width = 0.8) +
+    geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+    geom_text(aes(x = Treatment, y = max, label = padjFDRAsterisk)) +
+    ggtitle("9311") +
+    scale_fill_manual(values = c("#888888", "#10885A", "#A3A010")) +
+     xlab("") +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+)
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+ggsave(p, filename = "Fig4G.pdf", width = 2, height = 2.5)
+
+```
+
+## Fig4H  Inoculation of cyclo (Leu-Pro) significantly inhibit the tiller numbers of wild-type rice NC1/536 in field condition.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig4H.csv", header=T, sep=",")
+
+#calculate plot data
+phenotype = "TillerNumber"
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="Treatment")
+ForPlot$Treatment = factor(ForPlot$Treatment, levels = c("Mock", "Gr24", "S6"))
+
+ForSig = RawData
+ForSig = ForSig[, c("Treatment", phenotype)]
+colnames(ForSig)[2] = "y"
+WilcoxonResult = compare_means(y ~ Treatment, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+WilcoxonResult = as.data.frame(WilcoxonResult)
+WilcoxonResult = WilcoxonResult[WilcoxonResult$group1 == "Mock",]
+WilcoxonResult$padjFDR = p.adjust(WilcoxonResult$p, method = "fdr", n = length(WilcoxonResult$p))
+WilcoxonResult = WilcoxonResult[, c("group2", "method", "p", "padjFDR")]
+SigTableFinal = WilcoxonResult
+  for (padjmethod in c("p", "padjFDR")){
+    asterisk = paste(padjmethod, "Asterisk", sep = "")
+    for (m in 1:length(SigTableFinal[,1])){
+      ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+              SigTableFinal[[asterisk]][m] <- "***",
+              ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                      SigTableFinal[[asterisk]][m] <- "**",
+                      ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                              SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+    }
+  }
+SigTableFinal = merge(ForPlot[,c("Treatment","N", phenotype)], SigTableFinal, by.x = "Treatment", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig5B.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+ForPlot = merge(ForPlot, SigTableFinal[,c("Treatment", "padjFDRAsterisk")], all = T)
+ForPlot$padjmethod = padjmethod
+#prepare data for plot
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = Treatment, y = .data[[phenotype]], fill = Treatment)) +
+    geom_bar(stat = "identity", width = 0.8) +
+    geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+    geom_text(aes(x = Treatment, y = max, label = padjFDRAsterisk)) +
+    ggtitle("NC1/536") +
+    scale_fill_manual(values = c("#888888", "#10885A", "#A3A010")) +
+     xlab("") +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+)
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+ggsave(p, filename = "Fig4H.pdf", width = 2, height = 2.5)
+
+```
+
+## Fig4I  Inoculation of cyclo (Leu-Pro) significantly inhibit the tiller numbers of wild-type rice Karabaschak in field condition.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig4I.csv", header=T, sep=",")
+
+#calculate plot data
+phenotype = "TillerNumber"
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="Treatment")
+ForPlot$Treatment = factor(ForPlot$Treatment, levels = c("Mock", "Gr24", "S6"))
+
+ForSig = RawData
+ForSig = ForSig[, c("Treatment", phenotype)]
+colnames(ForSig)[2] = "y"
+WilcoxonResult = compare_means(y ~ Treatment, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+WilcoxonResult = as.data.frame(WilcoxonResult)
+WilcoxonResult = WilcoxonResult[WilcoxonResult$group1 == "Mock",]
+WilcoxonResult$padjFDR = p.adjust(WilcoxonResult$p, method = "fdr", n = length(WilcoxonResult$p))
+WilcoxonResult = WilcoxonResult[, c("group2", "method", "p", "padjFDR")]
+SigTableFinal = WilcoxonResult
+  for (padjmethod in c("p", "padjFDR")){
+    asterisk = paste(padjmethod, "Asterisk", sep = "")
+    for (m in 1:length(SigTableFinal[,1])){
+      ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+              SigTableFinal[[asterisk]][m] <- "***",
+              ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                      SigTableFinal[[asterisk]][m] <- "**",
+                      ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                              SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+    }
+  }
+SigTableFinal = merge(ForPlot[,c("Treatment","N", phenotype)], SigTableFinal, by.x = "Treatment", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig5B.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+ForPlot = merge(ForPlot, SigTableFinal[,c("Treatment", "padjFDRAsterisk")], all = T)
+ForPlot$padjmethod = padjmethod
+#prepare data for plot
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = Treatment, y = .data[[phenotype]], fill = Treatment)) +
+    geom_bar(stat = "identity", width = 0.8) +
+    geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+    geom_text(aes(x = Treatment, y = max, label = padjFDRAsterisk)) +
+    ggtitle("Karabaschak") +
+    scale_fill_manual(values = c("#888888", "#10885A", "#A3A010")) +
+     xlab("") +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+)
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+ggsave(p, filename = "Fig4I.pdf", width = 2, height = 2.5)
+
+```
+

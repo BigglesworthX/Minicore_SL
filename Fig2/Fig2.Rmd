@@ -1,0 +1,202 @@
+---
+title: "Fig2: Cultivated root microbiota members play causal roles in regulating rice tiller number"
+author: "HaoranXu"
+date: "2024/09/10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Clean workspace
+rm(list=ls()) 
+# Load setting and functions
+library(ggplot2)
+library(ggridges)
+library(RColorBrewer)
+library(ggpubr)
+library(Rmisc)
+```
+
+## Fig2A Cultivated bacterial isolates in tillered-related genera regulate rice tiller numbers under the laboratory conditions. Z-scored distributions of rice tillers after inoculation of individual isolates in tiller-related genera shown in Ridgeline plots.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig2AB.csv", header=T, sep=",")
+#Plot
+ForPlot = RawData
+ForPlot$Z_Score = scale(ForPlot$TillerNumber)
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("R2188","R780","R1625","R2149","R1801","R3062","R2797","R1405","R2488","R1870","R1275","R2567","Mock"))
+Colormap <- brewer.pal(11,"RdYlBu") 
+Colormap <- rev(Colormap)
+#save plot
+p = ggplot(ForPlot, aes(x = Z_Score, y = GroupID, fill = stat(x))) + 
+    geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+    scale_fill_gradientn(colours = Colormap) +
+    theme_ridges(grid = FALSE) +
+    ylab("") +
+    theme(
+      plot.background = element_rect(fill = "#FFFFFF"), 
+      panel.background = element_blank(), 
+      panel.grid.major.x = element_blank(),
+      panel.grid.major.y = element_blank(), 
+      panel.grid.minor.x = element_blank(), 
+      panel.grid.minor.y = element_blank(),
+      panel.border = element_blank(), 
+      axis.title = element_text(size = 8),  
+      axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+      axis.line = element_line(colour = "#000000"),
+      legend.title = element_blank(),
+      legend.key = element_rect(fill = "#FFFFFF"),
+      legend.position = "none"
+    )
+ggsave(p,filename=paste("Fig2A.pdf"), width=5.5, height=3.8)
+#ggsave(p,filename=paste("Fig2A.png"), width=5.5, height=3.8)
+```
+
+## Fig2B The number of rice tillers after inoculation of individual isolates in tiller-related genera shown in bar plots.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig2AB.csv", header=T, sep=",")
+phenotype = "TillerNumber"
+
+
+#calculate plot data
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("R2188","R780","R1625","R2149","R1801","R3062","R2797","R1405","R2488","R1870","R1275","R2567","Mock"))
+#statistics
+#Wilcox.test
+ForSig = RawData
+ForSig = ForSig[, c("GroupID", phenotype)]
+colnames(ForSig)[2] = "y"
+WilcoxtestResult = compare_means(y ~ GroupID, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+WilcoxtestResult = as.data.frame(WilcoxtestResult)
+WilcoxtestResult = WilcoxtestResult[WilcoxtestResult$group1 == "Mock",]
+WilcoxtestResult$padjFDR = p.adjust(WilcoxtestResult$p, method = "fdr", n = length(WilcoxtestResult$p))
+SigTableFinal = WilcoxtestResult[, c("group2", "method", "p", "padjFDR")]
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+padjmethod = "padjFDRAsterisk"
+SigTableFinal = merge(ForPlot[,c("GroupID","N", phenotype)], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig2B.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+ForPlot$padjmethod = padjmethod
+#prepare data for plot
+ForPlot = merge(ForPlot, SigTableFinal, all = T)
+ForPlot$max = (ForPlot$TillerNumber + ForPlot$se)*1.2
+#save data
+p = ggplot(data = ForPlot, mapping = aes(x = GroupID, y = .data[[phenotype]], fill = GroupID)) + 
+  labs(x = "", y="TillerNmuber")  +
+  scale_fill_manual(values = c("#fb8d81","#fb8d81","#fb8d81","#fb8d81","#fb8d81","#00c8ce","#00c8ce","#00c8ce","#00c8ce","#00c8ce","#00c8ce","#00c8ce","#888888")) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]] + se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  coord_flip() + 
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+ggsave(p,filename = "Fig2B.pdf", width = 3, height = 3.5)
+#ggsave(p,filename = "Fig2B.png", width = 3, height = 3.5)
+
+```
+ 
+## Fig2C-E The isolates in five tiller-related bacterial genera regulate rice tiller number (C) spike number (D) and dry weight (E) under the field conditions.
+
+```{r}
+#read input files
+RawData = read.table("dataForFig2CDE.csv", header=T, sep=",")
+phenotypeList = c("TillerNumber","SpikeNumber","DryWeight")
+for (phenotype in phenotypeList) {
+  #calculate plot data
+  ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="GroupID")
+  ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Mock", "R2567", "R2488", "R1405", "R780", "R1801"))
+  #statistics
+  #Wilcox.test
+  ForSig = RawData
+  ForSig = ForSig[, c("GroupID", phenotype)]
+  ForSig$GroupID = factor(ForSig$GroupID, levels = c("Mock", "R2567", "R2488", "R1405", "R780", "R1801"))
+  colnames(ForSig)[2] = "y"
+  WilcoxtestResult = compare_means(y ~ GroupID, data = ForSig, method = "wilcox.test", paired = F,)
+  colnames(ForSig)[2] = phenotype
+  WilcoxtestResult = as.data.frame(WilcoxtestResult)
+  WilcoxtestResult = WilcoxtestResult[WilcoxtestResult$group1 == "Mock",]
+  WilcoxtestResult$padjFDR = p.adjust(WilcoxtestResult$p, method = "fdr", n = length(WilcoxtestResult$p))
+  SigTableFinal = WilcoxtestResult[, c("group2", "method", "p", "padjFDR")]
+  for (padjmethod in c("p", "padjFDR")){
+    asterisk = paste(padjmethod, "Asterisk", sep = "")
+    for (m in 1:length(SigTableFinal[,1])){
+      ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+              SigTableFinal[[asterisk]][m] <- "***",
+              ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                      SigTableFinal[[asterisk]][m] <- "**",
+                      ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                              SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+    }
+  }
+padjmethod = "padjFDRAsterisk"
+SigTableFinal = merge(ForPlot[,c("GroupID","N", phenotype)], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file=paste0("StatisticsResultForFig2CDE", phenotype, ".csv"),append = F, quote = F, sep = ",", row.names = F, col.names = T)
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+ForPlot$padjmethod = padjmethod
+
+#prepare data for plot
+ForPlot = merge(ForPlot, SigTableFinal, all = T)
+ForPlot$padjmethod = padjmethod
+ForPlot = merge(ForPlot, SigTableFinal, all = T)
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = .data[[phenotype]], fill = GroupID)) +
+  #geom_bar(stat = "identity", width = 0.8) +
+  #geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+  geom_boxplot(data = ForSig, aes(x = GroupID, y = .data[[phenotype]], color = GroupID), alpha=0.75, outlier.alpha=0, size=0.7, width=0.5) +
+  geom_jitter(data = ForSig, aes(x = GroupID, y = .data[[phenotype]], color = GroupID), size=0.5, alpha=0.7, width = 0.2, height = 0.02)+theme(legend.position="none") +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#888888", "#00c8ce", "#00c8ce", "#00c8ce", "#fb8d81", "#fb8d81", "#fb8d81", "#fb8d81")) +
+  scale_color_manual(values = c("#888888", "#00c8ce", "#00c8ce", "#00c8ce", "#fb8d81", "#fb8d81", "#fb8d81", "#fb8d81")) +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+#ggsave(p, filename = paste0("Fig2CDE_", phenotype, ".png"), width = 2.4, height = 2.2)
+ggsave(p, filename = paste0("Fig2CDE_", phenotype, ".pdf"), width = 2.4, height = 2.2)
+}
+
+
+```

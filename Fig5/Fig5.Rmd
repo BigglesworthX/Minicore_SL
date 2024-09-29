@@ -1,0 +1,639 @@
+---
+title: "Fig5: Cyclo (Leu-Pro) directly binds rice strigolactone receptor D14"
+author: "HaoranXu"
+date: "2024/09/12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Clean workspace
+rm(list=ls()) 
+# Load setting and functions
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(Rmisc)
+library(reshape2)
+library(stringr)
+library(tidyr)
+library(plyr)
+```
+
+## Fig5A Quantification of binding between SL analog rac-GR24 and D14 by microscale thermophoresis (MST).
+
+```{r}
+#read input files
+RawData = read.table("dataForFig5AB.csv", header=T, sep=",")
+index = RawData
+D14GR24 = index[index$GroupID == "OsD14_GR24",]
+
+# normalization
+D14GR24 = D14GR24 %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Concentration",
+               values_to = "FractionBound")
+
+D14GR24$Concentration <- as.numeric(sub("^X", "", D14GR24$Concentration))
+D14GR24 = summarySE(D14GR24, measurevar = "FractionBound", groupvars=c("Concentration"))
+D14GR24 = D14GR24[,c("Concentration", "FractionBound", "sd")]
+D14GR24$norm = (D14GR24$FractionBound - min(D14GR24$FractionBound)) / (max(D14GR24$FractionBound) - min(D14GR24$FractionBound))
+D14GR24$log10Concentration = log10(D14GR24$Concentration)
+D14GR24 = rbind(c(0,0,0,0),D14GR24)  
+
+# lm
+model <- glm(norm ~ log10Concentration, data = D14GR24, family = binomial(link = "logit"))
+x_new <- seq(min(D14GR24$log10Concentration), max(D14GR24$log10Concentration)+0.2, length.out = 100)
+y_pred <- predict(model, data.frame(log10Concentration = x_new), type = "response")
+Linedata <- data.frame(x = x_new, y = y_pred * (max(D14GR24$FractionBound) - min(D14GR24$FractionBound)) + min(D14GR24$FractionBound))
+D14GR24 = D14GR24[-1,]
+  
+  
+p = ggplot(D14GR24, aes(x = log10Concentration, y = FractionBound)) +
+geom_point(shape=16, size=1) +
+geom_errorbar(aes(ymin = FractionBound-sd, ymax = FractionBound+sd), width = 0.1) +
+geom_line(data = Linedata, aes(x = x, y = y), color = "black") +
+xlim(1.6, 5.5) +
+ylim(-0.2, 1.2) +
+labs(title = "D14-GR24", x = paste("Concentration(uM)"), y = "FractionBound", color = "black", size = 8) +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+#ggsave(p, filename = "Fig5A.png", width = 2.3, height = 2)
+ggsave(p, filename = "Fig5A.pdf", width = 2.3, height = 2)
+
+```
+
+## Fig5B Quantification of binding between SL analog cyclo (Leu-Pro) and D14 by microscale thermophoresis (MST).
+
+```{r}
+#read input files
+RawData = read.table("dataForFig5AB.csv", header=T, sep=",")
+index = RawData
+D14S6 = index[index$GroupID == "OsD14_S6",]
+
+# normalization
+D14S6 = D14S6 %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Concentration",
+               values_to = "FractionBound")
+
+D14S6$Concentration <- as.numeric(sub("^X", "", D14S6$Concentration))
+D14S6 = summarySE(D14S6, measurevar = "FractionBound", groupvars=c("Concentration"))
+D14S6 = D14S6[,c("Concentration", "FractionBound", "sd")]
+D14S6$norm = (D14S6$FractionBound - min(D14S6$FractionBound)) / (max(D14S6$FractionBound) - min(D14S6$FractionBound))
+D14S6$log10Concentration = log10(D14S6$Concentration)
+D14S6 = rbind(c(0,0,0,0),D14S6)  
+
+# lm
+model <- glm(norm ~ log10Concentration, data = D14S6, family = binomial(link = "logit"))
+x_new <- seq(min(D14S6$log10Concentration), max(D14S6$log10Concentration)+0.2, length.out = 100)
+y_pred <- predict(model, data.frame(log10Concentration = x_new), type = "response")
+Linedata <- data.frame(x = x_new, y = y_pred * (max(D14S6$FractionBound) - min(D14S6$FractionBound)) + min(D14S6$FractionBound))
+D14S6 = D14S6[-1,]
+  
+  
+p = ggplot(D14S6, aes(x = log10Concentration, y = FractionBound)) +
+geom_point(shape=16, size=1) +
+geom_errorbar(aes(ymin = FractionBound-sd, ymax = FractionBound+sd), width = 0.1) +
+geom_line(data = Linedata, aes(x = x, y = y), color = "black") +
+xlim(1.6, 5.5) +
+ylim(-0.2, 1.2) +
+labs(title = "D14-S6", x = paste("Concentration(uM)"), y = "FractionBound", color = "black", size = 8) +
+  theme(
+  plot.background = element_rect(fill = "#FFFFFF"), 
+  panel.background = element_blank(), 
+  panel.grid.major.x = element_blank(),
+  panel.grid.major.y = element_blank(), 
+  panel.grid.minor.x = element_blank(), 
+  panel.grid.minor.y = element_blank(),
+  panel.border = element_blank(), 
+  axis.title = element_text(size = 8),  
+  axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+  axis.line = element_line(colour = "#000000"),
+  legend.title = element_blank(),
+  legend.key = element_rect(fill = "#FFFFFF"),
+  legend.position = "none"
+  )
+#ggsave(p, filename = "Fig5B.png", width = 2.3, height = 2)
+ggsave(p, filename = "Fig5B.pdf", width = 2.3, height = 2)
+
+```
+
+## Fig5E-F Quantification of binding between SL analog rac-GR24 and D14 mutants by microscale thermophoresis (MST).
+
+```{r}
+#read input files
+RawData = read.table("dataForFig5E_F.csv", header=T, sep=",")
+index = RawData
+OsD14F186A = index[index$GroupID == "OsD14F186A_S6",]
+OsD14V269D = index[index$GroupID == "OsD14V269D_S6",]
+OsD14F245A = index[index$GroupID == "OsD14F245A_S6",]
+OsD14L212D = index[index$GroupID == "OsD14L212D_S6",]
+
+# F186A
+# normalization
+OsD14F186A = OsD14F186A %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Concentration",
+               values_to = "FractionBound")
+
+OsD14F186A$Concentration <- as.numeric(sub("^X", "", OsD14F186A$Concentration))
+OsD14F186A = summarySE(OsD14F186A, measurevar = "FractionBound", groupvars=c("Concentration"))
+OsD14F186A = OsD14F186A[,c("Concentration", "FractionBound", "sd")]
+OsD14F186A$norm = (OsD14F186A$FractionBound - min(OsD14F186A$FractionBound)) / (max(OsD14F186A$FractionBound) - min(OsD14F186A$FractionBound))
+OsD14F186A$log10Concentration = log10(OsD14F186A$Concentration)
+OsD14F186A = rbind(c(0,0,0,0),OsD14F186A)  
+
+# lm
+model <- glm(norm ~ log10Concentration, data = OsD14F186A, family = binomial(link = "logit"))
+x_new <- seq(min(OsD14F186A$log10Concentration), max(OsD14F186A$log10Concentration)+0.2, length.out = 100)
+y_pred <- predict(model, data.frame(log10Concentration = x_new), type = "response")
+Linedata <- data.frame(x = x_new, y = y_pred * (max(OsD14F186A$FractionBound) - min(OsD14F186A$FractionBound)) + min(OsD14F186A$FractionBound))
+OsD14F186A = OsD14F186A[-1,]
+  
+p = ggplot(OsD14F186A, aes(x = log10Concentration, y = FractionBound)) +
+geom_point(shape=16, size=1) +
+geom_errorbar(aes(ymin = FractionBound-sd, ymax = FractionBound+sd), width = 0.1) +
+geom_line(data = Linedata, aes(x = x, y = y), color = "black") +
+xlim(1.6, 5.5) +
+ylim(-0.2, 1.2) +
+labs(title = "OsD14F186A", x = paste("Concentration(uM)"), y = "FractionBound", color = "black", size = 8) +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+#ggsave(p, filename = "Fig5E_1.png", width = 2.3, height = 2)
+ggsave(p, filename = "Fig5E_1.pdf", width = 2.3, height = 2)
+
+
+# V269D
+# normalization
+OsD14V269D = OsD14V269D %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Concentration",
+               values_to = "FractionBound")
+
+OsD14V269D$Concentration <- as.numeric(sub("^X", "", OsD14V269D$Concentration))
+OsD14V269D = summarySE(OsD14V269D, measurevar = "FractionBound", groupvars=c("Concentration"))
+OsD14V269D = OsD14V269D[,c("Concentration", "FractionBound", "sd")]
+OsD14V269D$log10Concentration = log10(OsD14V269D$Concentration)
+
+p = ggplot(OsD14V269D, aes(x = log10Concentration, y = FractionBound)) +
+geom_point(shape=16, size=1) +
+geom_errorbar(aes(ymin = FractionBound-sd, ymax = FractionBound+sd), width = 0.1) +
+#geom_line(data = Linedata, aes(x = x, y = y), color = "black") +
+xlim(1.6, 5.5) +
+#ylim(-0.2, 1.2) +
+labs(title = "D14V269D", x = paste("Concentration(uM)"), y = "FractionBound", color = "black", size = 8) +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+#ggsave(p, filename = "Fig5F_2.png", width = 2.3, height = 2)
+ggsave(p, filename = "Fig5F_2.pdf", width = 2.3, height = 2)
+
+
+# F245A
+OsD14F245A = OsD14F245A %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Concentration",
+               values_to = "FractionBound")
+
+OsD14F245A$Concentration <- as.numeric(sub("^X", "", OsD14F245A$Concentration))
+OsD14F245A = summarySE(OsD14F245A, measurevar = "FractionBound", groupvars=c("Concentration"))
+OsD14F245A = OsD14F245A[,c("Concentration", "FractionBound", "sd")]
+OsD14F245A$norm = (OsD14F245A$FractionBound - min(OsD14F245A$FractionBound)) / (max(OsD14F245A$FractionBound) - min(OsD14F245A$FractionBound))
+OsD14F245A$log10Concentration = log10(OsD14F245A$Concentration)
+OsD14F245A = rbind(c(0,0,0,0),OsD14F245A)  
+
+# lm
+model <- glm(norm ~ log10Concentration, data = OsD14F245A, family = binomial(link = "logit"))
+x_new <- seq(min(OsD14F245A$log10Concentration), max(OsD14F245A$log10Concentration)+0.2, length.out = 100)
+y_pred <- predict(model, data.frame(log10Concentration = x_new), type = "response")
+Linedata <- data.frame(x = x_new, y = y_pred * (max(OsD14F245A$FractionBound) - min(OsD14F245A$FractionBound)) + min(OsD14F245A$FractionBound))
+OsD14F245A = OsD14F245A[-1,]
+  
+p = ggplot(OsD14F245A, aes(x = log10Concentration, y = FractionBound)) +
+geom_point(shape=16, size=1) +
+geom_errorbar(aes(ymin = FractionBound-sd, ymax = FractionBound+sd), width = 0.1) +
+geom_line(data = Linedata, aes(x = x, y = y), color = "black") +
+xlim(1.6, 5.5) +
+ylim(-0.2, 1.2) +
+labs(title = "D14F245A", x = paste("Concentration(uM)"), y = "FractionBound", color = "black", size = 8) +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+#ggsave(p, filename = "Fig5E_2.png", width = 2.3, height = 2)
+ggsave(p, filename = "Fig5E_2.pdf", width = 2.3, height = 2)
+
+
+# L212D
+OsD14L212D = OsD14L212D %>%
+  pivot_longer(cols = starts_with("X"),
+               names_to = "Concentration",
+               values_to = "FractionBound")
+
+OsD14L212D$Concentration <- as.numeric(sub("^X", "", OsD14L212D$Concentration))
+OsD14L212D = summarySE(OsD14L212D, measurevar = "FractionBound", groupvars=c("Concentration"))
+OsD14L212D = OsD14L212D[,c("Concentration", "FractionBound", "sd")]
+OsD14L212D$norm = (OsD14L212D$FractionBound - min(OsD14L212D$FractionBound)) / (max(OsD14L212D$FractionBound) - min(OsD14L212D$FractionBound))
+OsD14L212D$log10Concentration = log10(OsD14L212D$Concentration)
+OsD14L212D = rbind(c(0,0,0,0),OsD14L212D)  
+
+# lm
+model <- glm(norm ~ log10Concentration, data = OsD14L212D, family = binomial(link = "logit"))
+x_new <- seq(min(OsD14L212D$log10Concentration), max(OsD14L212D$log10Concentration)+0.2, length.out = 100)
+y_pred <- predict(model, data.frame(log10Concentration = x_new), type = "response")
+Linedata <- data.frame(x = x_new, y = y_pred * (max(OsD14L212D$FractionBound) - min(OsD14L212D$FractionBound)) + min(OsD14L212D$FractionBound))
+OsD14L212D = OsD14L212D[-1,]
+  
+p = ggplot(OsD14L212D, aes(x = log10Concentration, y = FractionBound)) +
+geom_point(shape=16, size=1) +
+geom_errorbar(aes(ymin = FractionBound-sd, ymax = FractionBound+sd), width = 0.1) +
+geom_line(data = Linedata, aes(x = x, y = y), color = "black") +
+xlim(1.6, 5.5) +
+ylim(-0.2, 1.2) +
+labs(title = "D14L212D", x = paste("Concentration(uM)"), y = "FractionBound", color = "black", size = 8) +
+    theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+#ggsave(p, filename = "Fig5F_1.png", width = 2.3, height = 2)
+ggsave(p, filename = "Fig5F_1.pdf", width = 2.3, height = 2)
+
+```
+
+## Fig5G Mutations in D14 eliminate the effect of cyclo (Leu-Pro) on D53 degradation. 
+
+```{r}
+#read input files
+RawData = read.table("dataForFig5G.csv", header=T, sep=",")
+#calculate plot data
+phenotype = "RelativeD53Level"
+ForPlot <- summarySE(RawData, measurevar = phenotype, groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Nip_Mock", "Nip_gr24", "Nip_S6", "d14_Mock", "d14_gr24", "d14_S6"))
+#statistics
+ForSig = RawData
+colnames(ForSig)[2] = "y"
+TtestResult = compare_means(y ~ GroupID, data = ForSig, method = "t.test", paired = F,)
+colnames(ForSig)[2] = phenotype
+TtestResult = as.data.frame(TtestResult)
+TtestResult = TtestResult[c(1,2,3,13,14),]
+TtestResult$padjFDR = p.adjust(TtestResult$p, method = "fdr", n = length(TtestResult$p))
+TtestResult = TtestResult[, c("group2", "method", "p", "padjFDR")]
+SigTableFinal = TtestResult
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+SigTableFinal = merge(ForPlot[,c("GroupID","N", phenotype)], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig4C.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+#prepare data for plot
+ForPlot$max = (ForPlot[[phenotype]] + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = .data[[phenotype]], fill = GroupID)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = .data[[phenotype]], ymax = .data[[phenotype]]+se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#888888", "#765005", "#ffc076", "#888888", "#765005", "#ffc076")) +
+  xlab("") +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+ggsave(p, filename = "Fig5G.pdf", width = 3.5, height = 2.5)
+#ggsave(p, filename = "Fig5G.png", width = 3.5, height = 2.5)
+
+```
+
+## Fig5H  Mutations in D14 eliminate the tiller-inhibiting effect of cyclo (Leu-Pro) under the hydroponic condition
+
+```{r}
+# read input files
+RawData = read.table("dataForFig5H.csv", header=T, sep=",")
+index = RawData
+index = index[index$GroupID %in% c("Np_Mock", "Np_Gr24", "Np_S6"),]
+ForPlot <- summarySE(index, measurevar = "TillerNumber", groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Np_Mock", "Np_Gr24", "Np_S6", "d14_Mock", "d14_Gr24", "d14_S6"))
+
+#statistics
+ForSig = index
+colnames(ForSig)[2] = "y"
+WilcoxtestResult = compare_means(y ~ GroupID, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = "TillerNumber"
+WilcoxtestResult = as.data.frame(WilcoxtestResult)
+SigTableFinal = WilcoxtestResult[c(1,2),]
+SigTableFinal$padjFDR = p.adjust(SigTableFinal$p, method = "fdr", n = length(SigTableFinal$p))
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+SigTableFinal = merge(ForPlot[,c("GroupID","N", "TillerNumber")], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig4C.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+#prepare data for plot
+ForPlot$max = (ForPlot$TillerNumber + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = TillerNumber, fill = GroupID)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = TillerNumber, ymax = TillerNumber+se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#888888", "#10885A", "#A3A010","#888888", "#10885A", "#A3A010")) +
+  xlab("") +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+#ggsave(p, filename = "Fig5H_1.png", width = 2, height = 3)
+ggsave(p, filename = "Fig5H_1.pdf", width = 2, height = 3)
+
+
+index = RawData
+index = index[index$GroupID %in% c("d14_Mock", "d14_Gr24", "d14_S6"),]
+ForPlot <- summarySE(index, measurevar = "TillerNumber", groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Np_Mock", "Np_Gr24", "Np_S6", "d14_Mock", "d14_Gr24", "d14_S6"))
+
+#statistics
+ForSig = index
+colnames(ForSig)[2] = "y"
+WilcoxtestResult = compare_means(y ~ GroupID, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = "TillerNumber"
+WilcoxtestResult = as.data.frame(WilcoxtestResult)
+SigTableFinal = WilcoxtestResult[c(1,2),]
+SigTableFinal$padjFDR = p.adjust(SigTableFinal$p, method = "fdr", n = length(SigTableFinal$p))
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+SigTableFinal = merge(ForPlot[,c("GroupID","N", "TillerNumber")], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig4C.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+#prepare data for plot
+ForPlot$max = (ForPlot$TillerNumber + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = TillerNumber, fill = GroupID)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = TillerNumber, ymax = TillerNumber+se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#888888", "#10885A", "#A3A010","#888888", "#10885A", "#A3A010")) +
+  xlab("") +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+#ggsave(p, filename = "Fig5H_2.png", width = 2, height = 3)
+ggsave(p, filename = "Fig5H_2.pdf", width = 2, height = 3)
+
+```
+
+## Fig5I  Mutations in D14 eliminate the tiller-inhibiting effect of cyclo (Leu-Pro) under the field condition
+
+```{r}
+# read input files
+RawData = read.table("dataForFig5I.csv", header=T, sep=",")
+index = RawData
+index = index[index$GroupID %in% c("Np_Mock", "Np_Gr24", "Np_S6"),]
+ForPlot <- summarySE(index, measurevar = "TillerNumber", groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Np_Mock", "Np_Gr24", "Np_S6", "d14_Mock", "d14_Gr24", "d14_S6"))
+
+#statistics
+ForSig = index
+colnames(ForSig)[2] = "y"
+WilcoxtestResult = compare_means(y ~ GroupID, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = "TillerNumber"
+WilcoxtestResult = as.data.frame(WilcoxtestResult)
+SigTableFinal = WilcoxtestResult[c(1,2),]
+SigTableFinal$padjFDR = p.adjust(SigTableFinal$p, method = "fdr", n = length(SigTableFinal$p))
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+SigTableFinal = merge(ForPlot[,c("GroupID","N", "TillerNumber")], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig4C.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+#prepare data for plot
+ForPlot$max = (ForPlot$TillerNumber + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = TillerNumber, fill = GroupID)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = TillerNumber, ymax = TillerNumber+se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#888888", "#10885A", "#A3A010","#888888", "#10885A", "#A3A010")) +
+  xlab("") +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+p
+#ggsave(p, filename = "Fig5I_1.png", width = 2, height = 3)
+ggsave(p, filename = "Fig5I_1.pdf", width = 2, height = 3)
+
+
+index = RawData
+index = index[index$GroupID %in% c("d14_Mock", "d14_Gr24", "d14_S6"),]
+ForPlot <- summarySE(index, measurevar = "TillerNumber", groupvars ="GroupID")
+ForPlot$GroupID = factor(ForPlot$GroupID, levels = c("Np_Mock", "Np_Gr24", "Np_S6", "d14_Mock", "d14_Gr24", "d14_S6"))
+
+#statistics
+ForSig = index
+colnames(ForSig)[2] = "y"
+WilcoxtestResult = compare_means(y ~ GroupID, data = ForSig, method = "wilcox.test", paired = F,)
+colnames(ForSig)[2] = "TillerNumber"
+WilcoxtestResult = as.data.frame(WilcoxtestResult)
+SigTableFinal = WilcoxtestResult[c(1,2),]
+SigTableFinal$padjFDR = p.adjust(SigTableFinal$p, method = "fdr", n = length(SigTableFinal$p))
+for (padjmethod in c("p", "padjFDR")){
+  asterisk = paste(padjmethod, "Asterisk", sep = "")
+  for (m in 1:length(SigTableFinal[,1])){
+    ifelse (SigTableFinal[[padjmethod]][m] < 0.001,
+            SigTableFinal[[asterisk]][m] <- "***",
+            ifelse (SigTableFinal[[padjmethod]][m] < 0.01,
+                    SigTableFinal[[asterisk]][m] <- "**",
+                    ifelse (SigTableFinal[[padjmethod]][m] < 0.05,
+                            SigTableFinal[[asterisk]][m] <- "*", SigTableFinal[[asterisk]][m] <- "")))
+  }
+}
+SigTableFinal = merge(ForPlot[,c("GroupID","N", "TillerNumber")], SigTableFinal, by.x = "GroupID", by.y = "group2", all = T)
+#write.table(SigTableFinal, file="StatisticsResultForFig4C.csv",append = F, quote = F, sep = ",", row.names = F, col.names = T)
+
+padjmethod = "padjFDRAsterisk"
+SigTableFinal$asterisk = SigTableFinal[[padjmethod]]
+ForPlot = merge(ForPlot, SigTableFinal[,c("GroupID", "asterisk")], all = T)
+#prepare data for plot
+ForPlot$max = (ForPlot$TillerNumber + ForPlot$se)*1.2
+#save plot
+p = ggplot(data = ForPlot, aes(x = GroupID, y = TillerNumber, fill = GroupID)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_errorbar(aes(ymin = TillerNumber, ymax = TillerNumber+se), width = .1) +
+  geom_text(aes(x = GroupID, y = max, label = asterisk)) +
+  scale_fill_manual(values = c("#888888", "#10885A", "#A3A010","#888888", "#10885A", "#A3A010")) +
+  xlab("") +
+  theme(
+    plot.background = element_rect(fill = "#FFFFFF"), 
+    panel.background = element_blank(), 
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.x = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    panel.border = element_blank(), 
+    axis.title = element_text(size = 8),  
+    axis.text = element_text(size = 8, vjust = 1, hjust = 1, colour = "#000000"), 
+    axis.line = element_line(colour = "#000000"),
+    legend.title = element_blank(),
+    legend.key = element_rect(fill = "#FFFFFF"),
+    legend.position = "none"
+    )
+p = p + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+#ggsave(p, filename = "Fig5I_2.png", width = 2, height = 3)
+ggsave(p, filename = "Fig5I_2.pdf", width = 2, height = 3)
+
+```
